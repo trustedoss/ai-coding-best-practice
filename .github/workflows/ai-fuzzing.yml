@@ -44,7 +44,7 @@ jobs:
           fi
           python scripts/ai-fuzz.py
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: fuzz-report-${{ github.sha }}
