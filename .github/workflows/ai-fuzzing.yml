@@ -5,6 +5,8 @@ name: AI Fuzzing
 # 5xx 오류·비정상 동작을 탐지하는 방식을 사용합니다.
 # C/C++·Rust 저수준 코드는 OSS-Fuzz 연동을 권장합니다.
 # 참고: https://trustedoss.github.io/ai-coding/strategy
+#
+# ANTHROPIC_API_KEY가 설정되지 않으면 자동으로 건너뜁니다.
 
 on:
   push:
@@ -34,7 +36,13 @@ jobs:
       - name: Generate & run fuzz cases
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python scripts/ai-fuzz.py
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY가 설정되지 않아 AI 퍼징을 건너뜁니다."
+            echo "활성화 방법: GitHub Settings > Secrets > ANTHROPIC_API_KEY 등록"
+            exit 0
+          fi
+          python scripts/ai-fuzz.py
 
       - uses: actions/upload-artifact@v4
         if: always()
