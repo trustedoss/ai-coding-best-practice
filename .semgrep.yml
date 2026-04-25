@@ -1,0 +1,30 @@
+rules:
+  - id: no-hardcoded-secrets
+    patterns:
+      - pattern: $VAR = "..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(password|secret|api_key|token|credential)
+    message: "하드코딩된 시크릿 의심: $VAR — 환경 변수로 대체하세요"
+    languages: [python]
+    severity: ERROR
+
+  - id: no-eval
+    pattern: eval(...)
+    message: "eval() 사용 금지 — 코드 인젝션 위험"
+    languages: [python]
+    severity: ERROR
+
+  - id: no-os-system
+    pattern: os.system(...)
+    message: "os.system() 대신 subprocess.run() 사용 (shell=False)"
+    languages: [python]
+    severity: WARNING
+
+  - id: sql-string-concat
+    patterns:
+      - pattern: $QUERY = "..." + $VAR
+      - pattern: $QUERY = f"...{$VAR}..."
+    message: "SQL 쿼리 문자열 직접 조합 — ORM 또는 파라미터 바인딩 사용"
+    languages: [python]
+    severity: ERROR

@@ -1,0 +1,49 @@
+name: OSS Policy Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  oss-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Scan vulnerabilities
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          config: .grype.yaml
+
+      - name: Check licenses
+        run: |
+          FORBIDDEN="GPL-2.0 GPL-3.0 AGPL SSPL"
+          FOUND=""
+          for license in $FORBIDDEN; do
+            if grep -qi "\"$license" sbom.cdx.json; then
+              FOUND="$FOUND $license"
+            fi
+          done
+          if [ -n "$FOUND" ]; then
+            echo "::error::금지 라이선스 발견:$FOUND"
+            exit 1
+          fi
+          echo "라이선스 검사 통과"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-${{ github.sha }}
+          path: |
+            sbom.cdx.json
+            grype-report.json
+          retention-days: 90

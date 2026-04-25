@@ -1,0 +1,11 @@
+fail-on-severity: high
+
+ignore:
+  # 수정 버전이 아직 없는 취약점은 검토 후 여기에 추가
+  # - vulnerability: CVE-XXXX-XXXX
+  #   reason: "수정 버전 미출시, 2025-XX-XX 재검토 예정"
+
+output:
+  - format: table
+  - format: json
+    file: grype-report.json

@@ -1,0 +1,32 @@
+name: SAST
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep — OWASP Top 10
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/security-audit
+            p/python
+          generateSarif: true
+
+      - name: Semgrep — Custom Rules
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: .semgrep.yml
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sarif-${{ github.sha }}
+          path: semgrep.sarif
+          retention-days: 30
