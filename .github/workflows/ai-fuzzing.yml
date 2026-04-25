@@ -1,0 +1,44 @@
+name: AI Fuzzing
+
+# Python 웹 앱은 전통적 바이너리 퍼징(AFL++) 대신
+# Claude가 엣지케이스 입력을 생성하고 앱에 직접 실행해서
+# 5xx 오류·비정상 동작을 탐지하는 방식을 사용합니다.
+# C/C++·Rust 저수준 코드는 OSS-Fuzz 연동을 권장합니다.
+# 참고: https://trustedoss.github.io/ai-coding/strategy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 4 * * 0'  # 매주 일요일 새벽 4시
+
+jobs:
+  ai-fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt anthropic requests
+
+      - name: Start app
+        run: |
+          python src/app.py &
+          sleep 5
+          curl -sf http://localhost:8080/health || (echo "앱 기동 실패" && exit 1)
+
+      - name: Generate & run fuzz cases
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/ai-fuzz.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-report-${{ github.sha }}
+          path: fuzz-report.json
+          retention-days: 30

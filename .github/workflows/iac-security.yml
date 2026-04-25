@@ -1,0 +1,27 @@
+name: IaC Security
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkov — Dockerfile + Kubernetes
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile,kubernetes
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          soft_fail: false
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkov-sarif-${{ github.sha }}
+          path: checkov.sarif
+          retention-days: 30
