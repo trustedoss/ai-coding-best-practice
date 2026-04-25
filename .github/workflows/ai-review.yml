@@ -1,82 +1,153 @@
-# AI 보안 코드 리뷰 — 기본 비활성화
+# AI 보안 코드 리뷰 — Findings-Driven (4단계)
+#
+# 3단계 도구(Semgrep·grype)가 먼저 후보를 추리고,
+# AI는 그 findings에만 집중해 FP/TP 판정·심층 해석을 수행합니다.
 #
 # 활성화 방법:
-# 1. GitHub repository Settings > Secrets > ANTHROPIC_API_KEY 등록
-# 2. 아래 `if: false` 를 제거
+# GitHub Settings > Secrets > ANTHROPIC_API_KEY 등록 시 자동 활성화
 #
-# 주의: PR diff가 Anthropic 서버로 전송됩니다.
-# 사내 보안 정책 확인 후 활성화하세요.
-# FP(오탐)율이 높으므로 빌드 차단이 아닌 PR 코멘트 용도로만 사용합니다.
+# 참고: https://trustedoss.github.io/ai-coding/ai-security-review
 
-name: AI Security Review (Optional)
+name: AI Security Review (Findings-Driven)
 
 on:
   pull_request:
     branches: [main]
 
+permissions:
+  pull-requests: write
+
 jobs:
   ai-review:
-    if: false  # 활성화하려면 이 줄 제거
+    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Get PR diff
-        id: diff
+      # 3단계 도구 findings 수집
+      - name: Run Semgrep (SARIF)
         run: |
-          git diff origin/${{ github.base_ref }}...HEAD \
-            -- '*.py' '*.js' '*.ts' '*.go' '*.java' '*.rb' \
-            | head -c 8000 > diff.txt
-          echo "size=$(wc -c < diff.txt)" >> $GITHUB_OUTPUT
+          pip install semgrep -q
+          semgrep --config=auto --sarif-output=semgrep.sarif \
+            --include='*.py' --include='*.js' --include='*.ts' \
+            --include='*.go' --include='*.java' || true
 
-      - name: AI Security Review
-        if: steps.diff.outputs.size > 0
+      - name: Run grype (JSON)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+          grype dir:. -o json > grype.json || true
+
+      # AI: findings + 코드 컨텍스트 → 검증·해석
+      - name: AI Findings Analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pip install anthropic -q
-          python3 << 'EOF'
-          import anthropic, pathlib
+          python3 << 'PYEOF'
+          import json, pathlib, anthropic, sys
 
-          diff = pathlib.Path("diff.txt").read_text()
-          client = anthropic.Anthropic()
+          semgrep_issues = []
+          try:
+              sarif = json.loads(pathlib.Path("semgrep.sarif").read_text())
+              for run in sarif.get("runs", []):
+                  for result in run.get("results", []):
+                      loc = result.get("locations", [{}])[0]
+                      region = loc.get("physicalLocation", {}).get("region", {})
+                      uri = loc.get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
+                      line = region.get("startLine", 0)
+                      rule_id = result.get("ruleId", "")
+                      msg = result.get("message", {}).get("text", "")
+                      ctx = ""
+                      try:
+                          lines = pathlib.Path(uri).read_text().splitlines()
+                          start = max(0, line - 6)
+                          end = min(len(lines), line + 5)
+                          ctx = "\n".join(f"{i+1}: {l}" for i, l in enumerate(lines[start:end], start=start))
+                      except Exception:
+                          pass
+                      semgrep_issues.append({"rule": rule_id, "file": uri, "line": line, "msg": msg, "ctx": ctx})
+          except Exception:
+              pass
 
-          response = client.messages.create(
-            model="claude-opus-4-7",
-            max_tokens=1024,
-            messages=[{
-              "role": "user",
-              "content": (
-                "아래 코드 변경에서 보안 취약점을 검토하라.\n"
-                "탐지 대상: SQL 인젝션, 인증·인가 우회, 민감 정보 노출, "
-                "입력값 검증 누락, 안전하지 않은 역직렬화.\n"
-                "발견 시: 파일명·라인·위험도(High/Medium)·설명 형식으로 출력.\n"
-                "발견 없으면: 'PASS' 한 줄만 출력.\n\n"
-                f"```diff\n{diff}\n```"
-              )
-            }]
+          grype_issues = []
+          try:
+              grype = json.loads(pathlib.Path("grype.json").read_text())
+              for match in grype.get("matches", []):
+                  sev = match.get("vulnerability", {}).get("severity", "")
+                  if sev in ("High", "Critical"):
+                      grype_issues.append({
+                          "cve": match["vulnerability"]["id"],
+                          "pkg": match["artifact"]["name"],
+                          "ver": match["artifact"]["version"],
+                          "severity": sev,
+                          "fixed": match["vulnerability"].get("fix", {}).get("versions", []),
+                      })
+          except Exception:
+              pass
+
+          if not semgrep_issues and not grype_issues:
+              pathlib.Path("review_result.txt").write_text("PASS")
+              print("탐지된 findings 없음 — AI 분석 건너뜀")
+              sys.exit(0)
+
+          semgrep_block = "\n".join(
+              f"[Semgrep #{i+1}] {x['rule']} @ {x['file']}:{x['line']}\n메시지: {x['msg']}\n코드:\n{x['ctx']}"
+              for i, x in enumerate(semgrep_issues[:8])
+          )
+          grype_block = "\n".join(
+              f"[grype] {x['cve']} — {x['pkg']}@{x['ver']} ({x['severity']}) → 수정버전: {x['fixed']}"
+              for x in grype_issues[:5]
           )
 
+          prompt = f"""아래는 정적 분석 도구(Semgrep)와 SCA 도구(grype)의 탐지 결과다.
+각 항목에 대해 아래 형식으로 판정하라.
+
+판정 형식:
+- **[항목번호]** 실제취약점(TP) 또는 오탐(FP) | 위험도: High/Medium/Low | 판정 근거 1~2문장
+- TP일 경우: 실제 익스플로잇 시나리오 1줄 추가
+- grype CVE는 해당 패키지가 실제 코드 실행 경로에서 사용되는지 판단
+
+---
+{semgrep_block}
+
+{grype_block}
+---
+
+탐지 항목이 없으면 PASS를 출력하라."""
+
+          client = anthropic.Anthropic()
+          response = client.messages.create(
+              model="claude-opus-4-7",
+              max_tokens=1500,
+              messages=[{"role": "user", "content": prompt}]
+          )
           result = response.content[0].text
           pathlib.Path("review_result.txt").write_text(result)
           print(result)
-          EOF
+          PYEOF
 
       - name: Post PR comment
-        if: steps.diff.outputs.size > 0
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
-            const result = fs.readFileSync('review_result.txt', 'utf8');
+            let result;
+            try { result = fs.readFileSync('review_result.txt', 'utf8'); }
+            catch { result = 'PASS'; }
             if (result.trim() === 'PASS') return;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## AI 보안 코드 리뷰\n\n${result}\n\n> AI 생성 리뷰입니다. 오탐 가능성이 있으니 맥락을 고려해 판단하세요.`
+              body: [
+                '## 🔍 AI 보안 리뷰 (Findings-Driven)',
+                '',
+                '> 3단계 도구(Semgrep·grype) 탐지 결과를 AI가 검증·해석한 결과입니다.',
+                '> 오탐 가능성이 있으니 맥락을 고려해 판단하세요. 빌드 차단 기준이 아닙니다.',
+                '',
+                result
+              ].join('\n')
             });
