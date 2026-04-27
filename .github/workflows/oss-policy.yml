@@ -3,12 +3,13 @@ name: OSS Policy Check
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   oss-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
