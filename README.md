@@ -1,3 +1,9 @@
+[🇰🇷 한국어](#한국어) | [🇺🇸 English](#english)
+
+---
+
+<a id="한국어"></a>
+
 # AI 코딩 Best Practice
 
 [![Secret Detection](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/secret-detection.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/secret-detection.yml)
@@ -107,3 +113,117 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 - [30분 완성 Quick CI/CD](https://trustedoss.github.io/ai-coding/cicd-quick)
 - [AI 보안 코드 리뷰](https://trustedoss.github.io/ai-coding/ai-security-review)
 - [DevSecOps — 전사 파이프라인 설계](https://trustedoss.github.io/devsecops/pipeline-design)
+
+---
+
+<a id="english"></a>
+
+# AI Coding Best Practice
+
+[![Secret Detection](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/secret-detection.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/secret-detection.yml)
+[![SAST](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/sast.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/sast.yml)
+[![CodeQL](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/codeql.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/codeql.yml)
+[![OSS Policy](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/oss-policy.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/oss-policy.yml)
+[![IaC Security](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/iac-security.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/iac-security.yml)
+[![Container Security](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/container-security.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/container-security.yml)
+[![DAST](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml)
+[![AI Fuzzing](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml)
+
+A reference repository implementing all 5 stages of the [Trusted OSS — AI Coding Strategy](https://trustedoss.github.io/ai-coding/strategy).
+Fork it for immediate use, or copy individual config files into your existing project.
+
+---
+
+## Implementation Status by Stage
+
+| Stage | Description | Implementation Files |
+|-------|-------------|----------------------|
+| Stage 1 | Prompt-only | — (no tools needed) |
+| Stage 2 | AI rule internalization | `CLAUDE.md`, `.cursorrules` |
+| Stage 3 | CI/CD auto-blocking | `.github/workflows/` (6 traditional tools) |
+| Stage 4 | AI defense layer | `ai-review.yml` (findings-driven), `ai-fuzzing.yml` |
+| Stage 5 | Continuous monitoring & auto-remediation | `dependabot.yml`, `renovate.json`, `dast.yml` |
+
+---
+
+## Stage 3: CI/CD Configuration
+
+| Workflow | Tool | Role | PR | Push/Main |
+|----------|------|------|----|-----------|
+| `secret-detection.yml` | Gitleaks | Detect hardcoded API keys & tokens | ✅ | ✅ |
+| `sast.yml` | Semgrep | Detect SQL injection & vulnerable patterns | ✅ | — |
+| `codeql.yml` | CodeQL | Deep static analysis (includes weekly scan) | ✅ | ✅ |
+| `oss-policy.yml` | syft + grype | CVE scan + license check | ✅ | — |
+| `iac-security.yml` | Checkov | Dockerfile & K8s security config check | ✅ | — |
+| `container-security.yml` | Trivy | Docker image vulnerability scan | ✅ | ✅ |
+
+## Stage 4: AI Defense Layer
+
+| Workflow | Tool | Role | Trigger |
+|----------|------|------|---------|
+| `ai-review.yml` | Claude API | Semgrep/grype findings → AI validation & interpretation → PR comment | PR (auto-activates when `ANTHROPIC_API_KEY` is set) |
+| `ai-fuzzing.yml` | Claude + requests | AI-generated edge cases to detect 5xx errors | Push to main · weekly |
+
+## Stage 5: Continuous Monitoring & Auto-Remediation
+
+| Workflow / Config | Tool | Role | Schedule |
+|-------------------|------|------|----------|
+| `dependabot.yml` | Dependabot | Auto-generate dependency update PRs | Weekly |
+| `renovate.json` | Renovate | Auto-merge critical patches | Immediately · weekly |
+| `dast.yml` | OWASP ZAP | Dynamic vulnerability scan after deployment (soft fail) | Push to main |
+
+---
+
+## Quick Start
+
+### 1. Fork
+
+Fork this repository on GitHub, then clone it.
+
+```bash
+git clone https://github.com/YOUR-ORG/ai-coding-best-practice.git
+cd ai-coding-best-practice
+```
+
+### 2. Open a PR to verify the pipeline
+
+```bash
+git checkout -b test/pipeline-check
+echo "# test" >> README.md
+git commit -am "test: pipeline check"
+git push origin test/pipeline-check
+```
+
+Opening a PR on GitHub will automatically trigger all 6 Stage 3 workflows.
+
+### 3. Register GitHub Secrets
+
+| Secret Name | Purpose | Required |
+|-------------|---------|----------|
+| `ANTHROPIC_API_KEY` | Stage 4 AI review (`ai-review.yml`), AI fuzzing (`ai-fuzzing.yml`) | Optional |
+
+Once `ANTHROPIC_API_KEY` is registered, the Stage 4 AI defense layer activates automatically.
+No additional configuration needed — findings-driven AI review starts on the next PR.
+
+---
+
+## Customization
+
+| File | What to Modify |
+|------|----------------|
+| `CLAUDE.md` | Team license policy, prohibited package list |
+| `.cursorrules` | Per-tool rule adjustments |
+| `.grype.yaml` | Vulnerability threshold (`high` ↔ `critical`) |
+| `.gitleaks.toml` | Add organization-internal pattern exceptions |
+| `.semgrep.yml` | Add language/framework-specific rulesets |
+| `renovate.json` | Auto-merge scope, update schedule |
+| `dast.yml` | Switch to hard fail by changing `fail_action: true` after stabilization |
+
+---
+
+## Related Guides
+
+- [AI Coding 5-Stage Strategy](https://trustedoss.github.io/en/ai-coding/strategy)
+- [30-Minute Quick CI/CD](https://trustedoss.github.io/en/ai-coding/cicd-quick)
+- [AI Security Code Review](https://trustedoss.github.io/en/ai-coding/ai-security-review)
+- [DevSecOps — Enterprise Pipeline Design](https://trustedoss.github.io/en/devsecops/pipeline-design)
