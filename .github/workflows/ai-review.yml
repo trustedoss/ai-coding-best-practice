@@ -105,21 +105,23 @@ jobs:
               for x in grype_issues[:5]
           )
 
-          prompt = f"""아래는 정적 분석 도구(Semgrep)와 SCA 도구(grype)의 탐지 결과다.
-각 항목에 대해 아래 형식으로 판정하라.
-
-판정 형식:
-- **[항목번호]** 실제취약점(TP) 또는 오탐(FP) | 위험도: High/Medium/Low | 판정 근거 1~2문장
-- TP일 경우: 실제 익스플로잇 시나리오 1줄 추가
-- grype CVE는 해당 패키지가 실제 코드 실행 경로에서 사용되는지 판단
-
----
-{semgrep_block}
-
-{grype_block}
----
-
-탐지 항목이 없으면 PASS를 출력하라."""
+          prompt = "\n".join([
+              "아래는 정적 분석 도구(Semgrep)와 SCA 도구(grype)의 탐지 결과다.",
+              "각 항목에 대해 아래 형식으로 판정하라.",
+              "",
+              "판정 형식:",
+              "- **[항목번호]** 실제취약점(TP) 또는 오탐(FP) | 위험도: High/Medium/Low | 판정 근거 1~2문장",
+              "- TP일 경우: 실제 익스플로잇 시나리오 1줄 추가",
+              "- grype CVE는 해당 패키지가 실제 코드 실행 경로에서 사용되는지 판단",
+              "",
+              "---",
+              semgrep_block,
+              "",
+              grype_block,
+              "---",
+              "",
+              "탐지 항목이 없으면 PASS를 출력하라.",
+          ])
 
           client = anthropic.Anthropic()
           response = client.messages.create(
