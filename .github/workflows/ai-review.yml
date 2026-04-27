@@ -13,6 +13,7 @@ name: AI Security Review (Findings-Driven)
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   pull-requests: write
