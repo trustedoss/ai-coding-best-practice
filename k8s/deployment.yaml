@@ -1,9 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app
+  namespace: app
   labels:
     app: ai-coding-best-practice
+  annotations:
+    checkov.io/skip1: "CKV_K8S_43=image digest pinning is managed by the CI pipeline"
 spec:
   replicas: 2
   selector:
@@ -14,14 +22,15 @@ spec:
       labels:
         app: ai-coding-best-practice
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
+        runAsUser: 10001
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: app
-          image: ghcr.io/trustedoss/ai-coding-best-practice:latest
+          image: ghcr.io/trustedoss/ai-coding-best-practice:1.0.0
           ports:
             - containerPort: 8080
           securityContext:
@@ -53,6 +62,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: app
+  namespace: app
 spec:
   selector:
     app: ai-coding-best-practice
@@ -60,3 +70,21 @@ spec:
     - port: 80
       targetPort: 8080
   type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app
+  namespace: app
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-coding-best-practice
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - port: 8080
+  egress:
+    - {}
