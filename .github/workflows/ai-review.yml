@@ -19,7 +19,6 @@ permissions:
 
 jobs:
   ai-review:
-    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -47,7 +46,11 @@ jobs:
         run: |
           pip install anthropic -q
           python3 << 'PYEOF'
-          import json, pathlib, anthropic, sys
+          import json, pathlib, anthropic, sys, os
+
+          if not os.environ.get('ANTHROPIC_API_KEY'):
+              print("ANTHROPIC_API_KEY 미설정 — AI 분석 건너뜀")
+              sys.exit(0)
 
           semgrep_issues = []
           try:
