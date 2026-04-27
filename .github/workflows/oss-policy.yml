@@ -17,7 +17,7 @@ jobs:
           output-file: sbom.cdx.json
 
       - name: Scan vulnerabilities
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v7
         with:
           sbom: sbom.cdx.json
           fail-build: true
