@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)"
+    ],
+    "ask": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(git push *)",
+      "Bash(docker push *)",
+      "Bash(kubectl apply *)",
+      "WebFetch"
+    ]
+  },
+  "enabledMcpjsonServers": [],
+  "disableClaudeAiConnectors": true
+}

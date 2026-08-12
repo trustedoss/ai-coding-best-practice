@@ -15,7 +15,8 @@
 [![DAST](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml)
 [![AI Fuzzing](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml)
 
-[Trusted OSS — AI 코딩 5단계 전략](https://trustedoss.github.io/ai-coding/strategy)을 모두 구현한 참조 저장소입니다.
+[Trusted OSS — AI 코딩 5단계 전략](https://trustedoss.github.io/ai-coding/strategy)의 1~5단계를 파일로 구현한 참조 저장소입니다.
+3~5단계는 GitHub Actions 워크플로우로, 2단계와 4c는 설정 파일로 동작합니다.
 fork해서 즉시 사용하거나, 설정 파일을 복사해 기존 프로젝트에 적용할 수 있습니다.
 
 ---
@@ -27,7 +28,7 @@ fork해서 즉시 사용하거나, 설정 파일을 복사해 기존 프로젝�
 | 1단계 | 프롬프트 의존 | — (도구 불필요) |
 | 2단계 | AI 규칙 내재화 | `CLAUDE.md`, `.cursorrules` |
 | 3단계 | CI/CD 자동 차단 | `.github/workflows/` (전통 도구 6개) |
-| 4단계 | AI 방어 레이어 | `ai-review.yml` (findings-driven), `ai-fuzzing.yml` |
+| 4단계 | AI 방어 레이어 | `ai-review.yml` (findings-driven), `ai-fuzzing.yml`, `.mcp.json`, `.claude/settings.json` |
 | 5단계 | 지속적 모니터링·자동 교정 | `dependabot.yml`, `renovate.json`, `dast.yml` |
 
 ---
@@ -45,10 +46,14 @@ fork해서 즉시 사용하거나, 설정 파일을 복사해 기존 프로젝�
 
 ## 4단계 AI 방어 레이어
 
-| 워크플로우 | 도구 | 역할 | 실행 조건 |
-|-----------|------|------|-----------|
-| `ai-review.yml` | Claude API | Semgrep·grype findings → AI 검증·해석 → PR 코멘트 | PR (ANTHROPIC_API_KEY 등록 시 자동 활성화) |
-| `ai-fuzzing.yml` | Claude + requests | AI 생성 엣지케이스로 5xx 탐지 | Push to main · 주 1회 |
+| 단계 | 파일 | 도구 | 역할 | 실행 조건 |
+|------|------|------|------|-----------|
+| 4a | `ai-review.yml` | Claude API | Semgrep·grype findings → AI 검증·해석 → PR 코멘트 | PR (ANTHROPIC_API_KEY 등록 시 자동 활성화) |
+| 4b | `ai-fuzzing.yml` | Claude + requests | AI 생성 엣지케이스로 5xx 탐지 | Push to main · 주 1회 |
+| 4c | `.mcp.json`, `.claude/settings.json` | Claude Code 설정 | MCP 서버 allowlist, 시크릿 읽기 차단, 외부 통신·배포 명령 사람 승인 | 에이전트 세션마다 |
+
+4c는 CI가 아니라 개발자 워크스테이션의 에이전트를 대상으로 하므로 워크플로우가 아닌 설정 파일로 구현합니다.
+규칙과 서버 추가 절차는 [`CLAUDE.md`](CLAUDE.md#ai-에이전트mcp-도구-정책)에 있습니다.
 
 ## 5단계 지속적 모니터링·자동 교정
 
@@ -97,8 +102,10 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 
 | 파일 | 수정 포인트 |
 |------|------------|
-| `CLAUDE.md` | 팀 라이선스 정책, 금지 패키지 목록 |
+| `CLAUDE.md` | 팀 라이선스 정책, 금지 패키지 목록, MCP 서버 추가 절차 |
 | `.cursorrules` | 도구별 규칙 조정 |
+| `.mcp.json` | 승인한 MCP 서버 선언 (버전 고정 필수) |
+| `.claude/settings.json` | 에이전트 권한 — 읽기 차단 경로, 승인이 필요한 명령 |
 | `.grype.yaml` | 취약점 임계값 (`high` ↔ `critical`) |
 | `.gitleaks.toml` | 조직 내부 패턴 예외 처리 추가 |
 | `.semgrep.yml` | 언어·프레임워크별 룰셋 추가 |
@@ -112,6 +119,8 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 - [AI 코딩 5단계 전략](https://trustedoss.github.io/ai-coding/strategy)
 - [30분 완성 Quick CI/CD](https://trustedoss.github.io/ai-coding/cicd-quick)
 - [AI 보안 코드 리뷰](https://trustedoss.github.io/ai-coding/ai-security-review)
+- [AI 퍼징](https://trustedoss.github.io/ai-coding/ai-fuzzing)
+- [에이전트와 MCP 도구 거버넌스](https://trustedoss.github.io/ai-coding/agent-governance)
 - [DevSecOps — 전사 파이프라인 설계](https://trustedoss.github.io/devsecops/pipeline-design)
 
 ---
@@ -129,7 +138,8 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 [![DAST](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml)
 [![AI Fuzzing](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml)
 
-A reference repository implementing all 5 stages of the [Trusted OSS — AI Coding Strategy](https://trustedoss.github.io/ai-coding/strategy).
+A reference repository implementing stages 1 to 5 of the [Trusted OSS — AI Coding Strategy](https://trustedoss.github.io/en/ai-coding/strategy) as files.
+Stages 3 to 5 run as GitHub Actions workflows; stage 2 and stage 4c are config files.
 Fork it for immediate use, or copy individual config files into your existing project.
 
 ---
@@ -141,7 +151,7 @@ Fork it for immediate use, or copy individual config files into your existing pr
 | Stage 1 | Prompt-only | — (no tools needed) |
 | Stage 2 | AI rule internalization | `CLAUDE.md`, `.cursorrules` |
 | Stage 3 | CI/CD auto-blocking | `.github/workflows/` (6 traditional tools) |
-| Stage 4 | AI defense layer | `ai-review.yml` (findings-driven), `ai-fuzzing.yml` |
+| Stage 4 | AI defense layer | `ai-review.yml` (findings-driven), `ai-fuzzing.yml`, `.mcp.json`, `.claude/settings.json` |
 | Stage 5 | Continuous monitoring & auto-remediation | `dependabot.yml`, `renovate.json`, `dast.yml` |
 
 ---
@@ -159,10 +169,14 @@ Fork it for immediate use, or copy individual config files into your existing pr
 
 ## Stage 4: AI Defense Layer
 
-| Workflow | Tool | Role | Trigger |
-|----------|------|------|---------|
-| `ai-review.yml` | Claude API | Semgrep/grype findings → AI validation & interpretation → PR comment | PR (auto-activates when `ANTHROPIC_API_KEY` is set) |
-| `ai-fuzzing.yml` | Claude + requests | AI-generated edge cases to detect 5xx errors | Push to main · weekly |
+| Stage | File | Tool | Role | Trigger |
+|-------|------|------|------|---------|
+| 4a | `ai-review.yml` | Claude API | Semgrep/grype findings → AI validation & interpretation → PR comment | PR (auto-activates when `ANTHROPIC_API_KEY` is set) |
+| 4b | `ai-fuzzing.yml` | Claude + requests | AI-generated edge cases to detect 5xx errors | Push to main · weekly |
+| 4c | `.mcp.json`, `.claude/settings.json` | Claude Code settings | MCP server allowlist, secret reads blocked, human approval for egress and deploy commands | Every agent session |
+
+Stage 4c governs the agent on a developer workstation rather than CI, so it ships as config files rather than a workflow.
+The rules and the server intake procedure are in [`CLAUDE.md`](CLAUDE.md#ai-에이전트mcp-도구-정책).
 
 ## Stage 5: Continuous Monitoring & Auto-Remediation
 
@@ -211,8 +225,10 @@ No additional configuration needed — findings-driven AI review starts on the n
 
 | File | What to Modify |
 |------|----------------|
-| `CLAUDE.md` | Team license policy, prohibited package list |
+| `CLAUDE.md` | Team license policy, prohibited package list, MCP server intake procedure |
 | `.cursorrules` | Per-tool rule adjustments |
+| `.mcp.json` | Approved MCP servers (version pin required) |
+| `.claude/settings.json` | Agent permissions — blocked read paths, commands that require approval |
 | `.grype.yaml` | Vulnerability threshold (`high` ↔ `critical`) |
 | `.gitleaks.toml` | Add organization-internal pattern exceptions |
 | `.semgrep.yml` | Add language/framework-specific rulesets |
@@ -226,4 +242,6 @@ No additional configuration needed — findings-driven AI review starts on the n
 - [AI Coding 5-Stage Strategy](https://trustedoss.github.io/en/ai-coding/strategy)
 - [30-Minute Quick CI/CD](https://trustedoss.github.io/en/ai-coding/cicd-quick)
 - [AI Security Code Review](https://trustedoss.github.io/en/ai-coding/ai-security-review)
+- [AI Fuzzing](https://trustedoss.github.io/en/ai-coding/ai-fuzzing)
+- [Agent and MCP Tool Governance](https://trustedoss.github.io/en/ai-coding/agent-governance)
 - [DevSecOps — Enterprise Pipeline Design](https://trustedoss.github.io/en/devsecops/pipeline-design)
