@@ -1,0 +1,51 @@
+name: Mutation Testing
+
+# Advisory, not a gate. mutmut makes small changes to src/ (flips a
+# comparison, drops a call, changes a constant) and reruns the tests. A
+# mutant that survives means no test noticed the wrong behavior, even if
+# coverage says the line ran.
+#
+# It runs weekly and on demand because it reruns the suite once per mutant.
+# Read the surviving mutants in the job summary and add the missing
+# assertions; do not turn this into a blocking check until the score is
+# stable.
+#
+# mutmut skips functions with decorators, so route handlers in src/app.py
+# stay thin and the logic lives in plain functions that tests can reach.
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - run: pip install -r requirements-dev.txt
+
+      - name: Run mutmut
+        run: mutmut run || true
+
+      - name: Report surviving mutants
+        run: |
+          {
+            echo "## Mutation testing"
+            echo
+            echo '```'
+            mutmut results || true
+            echo '```'
+            echo
+            echo "An empty list means every mutant was killed."
+          } >> "$GITHUB_STEP_SUMMARY"

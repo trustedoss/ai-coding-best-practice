@@ -1,0 +1,16 @@
+# Paths that define how AI agents work in this repository.
+#
+# tests/ holds the acceptance criteria for agent-written code. An agent that
+# weakens a test to make it pass changes the definition of "done", so a human
+# owner reviews every change here. The same applies to the agent rules
+# (CLAUDE.md, .cursorrules), agent permissions (.claude/), and CI gates.
+#
+# Replace the account with your team, e.g. @your-org/maintainers.
+# GitHub assigns no reviewer for an owner that does not exist.
+
+/tests/          @haksungjang
+/CLAUDE.md       @haksungjang
+/.cursorrules    @haksungjang
+/.claude/        @haksungjang
+/.mcp.json       @haksungjang
+/.github/        @haksungjang

@@ -14,6 +14,7 @@
 [![Container Security](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/container-security.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/container-security.yml)
 [![DAST](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml)
 [![AI Fuzzing](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml)
+[![Tests](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/tests.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/tests.yml)
 
 [Trusted OSS — AI 코딩 5단계 전략](https://trustedoss.github.io/ai-coding/strategy)의 1~5단계를 파일로 구현한 참조 저장소입니다.
 3~5단계는 GitHub Actions 워크플로우로, 2단계와 4c는 설정 파일로 동작합니다.
@@ -65,6 +66,30 @@ fork해서 즉시 사용하거나, 설정 파일을 복사해 기존 프로젝�
 
 ---
 
+## 테스트와 협업
+
+AI가 만든 변경이 늘어나면 병목은 리뷰와 검증으로 옮겨 갑니다. 아래 파일은 테스트를 검증 기준으로 고정하고, 리뷰할 수 있는 크기로 변경을 나누도록 돕습니다.
+
+| 파일 | 역할 | 강제 수준 |
+|------|------|-----------|
+| `tests/`, `tests.yml` | 동작 테스트와 커버리지 하한(90%) | 차단 |
+| `test-integrity.yml`, `scripts/check-test-integrity.py` | 테스트 파일·함수 삭제, skip·xfail 추가, assert 감소 탐지. `test-change-approved` 라벨로 사람이 승인 | 차단 (라벨로 해제) |
+| `mutation.yml` | mutmut 변이 테스트로 assert 가 잘못된 동작을 잡는지 측정 | 권고 (주 1회) |
+| `pr-size.yml` | 변경 400줄 초과 시 분할 권고 | 권고 |
+| `.github/CODEOWNERS` | `tests/`, 에이전트 규칙·권한, CI 변경은 담당자 리뷰 | 리뷰 요청 |
+| `.github/pull_request_template.md` | AI 사용 여부, 사람이 내린 결정, 테스트 확인 기록 | 절차 |
+| `.claude/settings.json` | 에이전트가 `tests/` 를 고칠 때 사람 승인 (`Edit(./tests/**)`) | 에이전트 세션 |
+
+로컬 실행:
+
+```bash
+pip install -r requirements-dev.txt
+pytest --cov=src
+mutmut run && mutmut results
+```
+
+---
+
 ## 빠른 시작
 
 ### 1. Fork
@@ -111,6 +136,9 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 | `.semgrep.yml` | 언어·프레임워크별 룰셋 추가 |
 | `renovate.json` | 자동 병합 범위, 업데이트 주기 |
 | `dast.yml` | 안정화 후 `fail_action: true` 로 변경해 Hard fail 전환 |
+| `tests.yml` | 커버리지 하한 `--cov-fail-under` |
+| `pr-size.yml` | 권고 기준 `MAX_LINES` |
+| `.github/CODEOWNERS` | 계정을 팀(`@your-org/maintainers`)으로 교체 |
 
 ---
 
@@ -121,6 +149,8 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 - [AI 보안 코드 리뷰](https://trustedoss.github.io/ai-coding/ai-security-review)
 - [AI 퍼징](https://trustedoss.github.io/ai-coding/ai-fuzzing)
 - [에이전트와 MCP 도구 거버넌스](https://trustedoss.github.io/ai-coding/agent-governance)
+- [AI 시대의 테스트 환경](https://trustedoss.github.io/ai-coding/testing)
+- [생산성과 협업](https://trustedoss.github.io/ai-coding/collaboration)
 - [DevSecOps — 전사 파이프라인 설계](https://trustedoss.github.io/devsecops/pipeline-design)
 
 ---
@@ -137,6 +167,7 @@ GitHub에서 PR을 생성하면 3단계 워크플로우 6개가 자동 실행됩
 [![Container Security](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/container-security.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/container-security.yml)
 [![DAST](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/dast.yml)
 [![AI Fuzzing](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/ai-fuzzing.yml)
+[![Tests](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/tests.yml/badge.svg)](https://github.com/trustedoss/ai-coding-best-practice/actions/workflows/tests.yml)
 
 A reference repository implementing stages 1 to 5 of the [Trusted OSS — AI Coding Strategy](https://trustedoss.github.io/en/ai-coding/strategy) as files.
 Stages 3 to 5 run as GitHub Actions workflows; stage 2 and stage 4c are config files.
@@ -188,6 +219,30 @@ The rules and the server intake procedure are in [`CLAUDE.md`](CLAUDE.md#ai-에�
 
 ---
 
+## Testing and Collaboration
+
+As AI-written changes grow, the bottleneck moves to review and verification. These files fix tests as the acceptance criteria and keep changes small enough to review.
+
+| File | Role | Enforcement |
+|------|------|-------------|
+| `tests/`, `tests.yml` | Behavior tests and a 90% coverage floor | Blocking |
+| `test-integrity.yml`, `scripts/check-test-integrity.py` | Detects deleted test files or functions, new skip/xfail markers, fewer asserts. A person approves with the `test-change-approved` label | Blocking (label overrides) |
+| `mutation.yml` | mutmut mutation testing: do the asserts catch wrong behavior? | Advisory (weekly) |
+| `pr-size.yml` | Suggests a split above 400 changed lines | Advisory |
+| `.github/CODEOWNERS` | Owner review for `tests/`, agent rules and permissions, CI | Review request |
+| `.github/pull_request_template.md` | Records AI use, decisions made by a person, test checks | Procedure |
+| `.claude/settings.json` | Agent edits to `tests/` need human approval (`Edit(./tests/**)`) | Agent session |
+
+Run locally:
+
+```bash
+pip install -r requirements-dev.txt
+pytest --cov=src
+mutmut run && mutmut results
+```
+
+---
+
 ## Quick Start
 
 ### 1. Fork
@@ -234,6 +289,9 @@ No additional configuration needed — findings-driven AI review starts on the n
 | `.semgrep.yml` | Add language/framework-specific rulesets |
 | `renovate.json` | Auto-merge scope, update schedule |
 | `dast.yml` | Switch to hard fail by changing `fail_action: true` after stabilization |
+| `tests.yml` | Coverage floor `--cov-fail-under` |
+| `pr-size.yml` | Advisory limit `MAX_LINES` |
+| `.github/CODEOWNERS` | Replace the account with your team (`@your-org/maintainers`) |
 
 ---
 
@@ -244,4 +302,6 @@ No additional configuration needed — findings-driven AI review starts on the n
 - [AI Security Code Review](https://trustedoss.github.io/en/ai-coding/ai-security-review)
 - [AI Fuzzing](https://trustedoss.github.io/en/ai-coding/ai-fuzzing)
 - [Agent and MCP Tool Governance](https://trustedoss.github.io/en/ai-coding/agent-governance)
+- [Testing for AI-Written Code](https://trustedoss.github.io/en/ai-coding/testing)
+- [Productivity and Collaboration](https://trustedoss.github.io/en/ai-coding/collaboration)
 - [DevSecOps — Enterprise Pipeline Design](https://trustedoss.github.io/en/devsecops/pipeline-design)
