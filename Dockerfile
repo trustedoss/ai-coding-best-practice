@@ -1,5 +1,12 @@
 FROM python:3.14-slim
 
+# The upstream image is rebuilt on its own schedule, so Debian security fixes
+# can be available before a new python:3.14-slim tag ships. Apply them at build
+# time so the image scan (container-security.yml) does not wait on upstream.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY requirements.txt .
