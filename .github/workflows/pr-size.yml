@@ -1,0 +1,42 @@
+name: PR Size
+
+# Advisory. AI agents produce large diffs quickly, and review becomes the
+# bottleneck: a reviewer reads a 2,000-line change less carefully than four
+# 500-line ones. This check warns when a pull request changes more than
+# MAX_LINES lines outside lock files and generated paths. It never fails the
+# build; the reviewer decides whether to ask for a split.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  MAX_LINES: 400
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count changed lines
+        run: |
+          base="origin/${{ github.base_ref }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          changed=$(git diff --numstat "$base...$head" -- . \
+              ':(exclude)*.lock' ':(exclude)package-lock.json' ':(exclude)mutants/**' \
+            | awk '$1 != "-" { s += $1 + $2 } END { print s + 0 }')
+          echo "Changed lines: $changed (advisory limit $MAX_LINES)"
+          {
+            echo "## PR size"
+            echo
+            echo "Changed lines: **$changed** (advisory limit $MAX_LINES)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$changed" -gt "$MAX_LINES" ]; then
+            echo "::warning::This PR changes $changed lines. Consider splitting it so each part can be reviewed carefully."
+          fi

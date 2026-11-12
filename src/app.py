@@ -15,18 +15,31 @@ def health():
     return jsonify({"status": "ok"})
 
 
+def search_items(query, items):
+    """Return items whose name contains query, ignoring case."""
+    needle = query.lower()
+    return [item for item in items if needle in item["name"].lower()]
+
+
+def is_allowed_fetch_url(url):
+    """Only HTTPS URLs may be fetched."""
+    return url.startswith("https://")
+
+
+# Route handlers stay thin. Logic lives in plain functions above so that
+# unit tests and mutation testing (mutmut skips decorated functions) reach it.
 @app.route("/search")
 def search():
     query = request.args.get("q", "")
     # Parameterized approach — safe from injection
-    results = [item for item in ITEMS if query.lower() in item["name"].lower()]
+    results = search_items(query, ITEMS)
     return jsonify({"results": results, "count": len(results)})
 
 
 @app.route("/fetch")
 def fetch_url():
     url = request.args.get("url", "")
-    if not url.startswith("https://"):
+    if not is_allowed_fetch_url(url):
         return jsonify({"error": "Only HTTPS URLs allowed"}), 400
     response = requests.get(url, timeout=5)
     return jsonify({"status": response.status_code})

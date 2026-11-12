@@ -1,0 +1,39 @@
+name: Test Integrity
+
+# Fails when a pull request weakens tests/: a deleted test file or function,
+# a new skip/xfail marker, or fewer assert statements than the base branch.
+#
+# Coding agents sometimes make a red test green by changing the test instead
+# of the code. Sometimes removing a test is right, so this is not a ban: a
+# maintainer who has read the change adds the `test-change-approved` label,
+# and the check passes. The label is the record that a person decided.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compare tests/ against the base branch
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'test-change-approved') }}
+        run: |
+          python3 scripts/check-test-integrity.py \
+            "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
+
+      - name: Approved by label
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'test-change-approved') }}
+        run: echo "::notice::test-change-approved label present; a maintainer accepted the test change."
