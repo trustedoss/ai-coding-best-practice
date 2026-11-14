@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 # The upstream image is rebuilt on its own schedule, so Debian security fixes
 # can be available before a new python:3.14-slim tag ships. Apply them at build
